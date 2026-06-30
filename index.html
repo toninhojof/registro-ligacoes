@@ -580,7 +580,29 @@ function mostrarApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').classList.add('visible');
   document.getElementById('header-user').textContent = currentUser.nome;
-  navigate('dashboard');
+  aplicarPermissoes();
+  navigate(currentUser.perfil === 'recepcao' ? 'cadastro' : 'dashboard');
+}
+
+function aplicarPermissoes() {
+  const perfil = currentUser.perfil || 'recepcao';
+
+  // Itens do menu lateral e topo
+  const itensRestritos = {
+    'dashboard':  ['gerente','admin'],
+    'consulta':   ['gerente','admin'],
+    'relatorio':  ['gerente','admin'],
+    'graficos':   ['gerente','admin'],
+    'usuarios':   ['admin']
+  };
+
+  Object.keys(itensRestritos).forEach(tela => {
+    const permitido = itensRestritos[tela].includes(perfil);
+    const sbItem  = document.getElementById('sb-'+tela);
+    const navItem = document.getElementById('nav-'+tela);
+    if (sbItem)  sbItem.style.display  = permitido ? 'flex' : 'none';
+    if (navItem) navItem.style.display = permitido ? 'flex' : 'none';
+  });
 }
 
 function fazerLogout() {
@@ -611,6 +633,21 @@ function fazerLogout() {
 //  NAVEGAÇÃO
 // ══════════════════════════════════════════
 function navigate(screen) {
+  const perfil = currentUser?.perfil || 'recepcao';
+  const permissoes = {
+    'dashboard':  ['gerente','admin'],
+    'cadastro':   ['recepcao','gerente','admin'],
+    'consulta':   ['gerente','admin'],
+    'relatorio':  ['gerente','admin'],
+    'graficos':   ['gerente','admin'],
+    'usuarios':   ['admin']
+  };
+
+  if (permissoes[screen] && !permissoes[screen].includes(perfil)) {
+    toast('Você não tem permissão para acessar esta área.', 'error');
+    screen = 'cadastro';
+  }
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.header-nav button').forEach(b => b.classList.remove('active'));
@@ -773,8 +810,15 @@ async function loadCadastroData() {
 
 function renderCadastroTable() {
   const q = document.getElementById('cad-search').value.toLowerCase();
+  let baseData = cadData;
+
+  // Recepção só vê os próprios registros
+  if (currentUser?.perfil === 'recepcao') {
+    baseData = cadData.filter(r => r.usuario === currentUser.nome);
+  }
+
   const filtered = sortData(
-    q ? cadData.filter(r => (r.nome+r.empresa+r.numero+r.setor+r.encaminhado+r.motivo).toLowerCase().includes(q)) : cadData,
+    q ? baseData.filter(r => (r.nome+r.empresa+r.numero+r.setor+r.encaminhado+r.motivo).toLowerCase().includes(q)) : baseData,
     cadSort
   );
   const total = filtered.length;
@@ -1143,15 +1187,18 @@ async function carregarUsuarios() {
       .order('data_cadastro', { ascending:false });
     if (error) throw error;
 
+    const nomePerfil = { recepcao:'Recepção', gerente:'Gerente', admin:'Administrador' };
+
     document.getElementById('usr-table').innerHTML = data.length
       ? data.map(u => `
           <tr>
             <td><strong>${u.nome}</strong></td>
             <td>${u.email}</td>
+            <td><span class="setor-badge setor-Comercial">${nomePerfil[u.perfil] || u.perfil}</span></td>
             <td><span class="setor-badge ${u.ativo ? 'setor-Comercial' : 'setor-Outros'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
             <td>${new Date(u.data_cadastro).toLocaleDateString('pt-BR')}</td>
             <td style="white-space:nowrap">
-              <button class="btn-icon btn-icon-edit" onclick="editarUsuario('${u.id}','${u.nome}','${u.email}')" title="Editar">
+              <button class="btn-icon btn-icon-edit" onclick="editarUsuario('${u.id}','${u.nome}','${u.email}','${u.perfil}')" title="Editar">
                 <i class="ti ti-edit"></i>
               </button>
               ${u.id !== currentUser?.id ? `
@@ -1160,20 +1207,21 @@ async function carregarUsuarios() {
               </button>` : ''}
             </td>
           </tr>`).join('')
-      : `<tr><td colspan="5"><div class="empty-state"><i class="ti ti-users"></i>Nenhum usuario cadastrado</div></td></tr>`;
+      : `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-users"></i>Nenhum usuário cadastrado</div></td></tr>`;
 
   } catch(e) {
-    toast('Erro ao carregar usuarios: ' + e.message, 'error');
+    toast('Erro ao carregar usuários: ' + e.message, 'error');
   }
 }
 
-function editarUsuario(id, nome, email) {
+function editarUsuario(id, nome, email, perfil) {
   document.getElementById('usr-edit-id').value = id;
   document.getElementById('usr-nome').value    = nome;
   document.getElementById('usr-email').value   = email;
   document.getElementById('usr-senha').value   = '';
-  document.getElementById('usr-form-title').textContent = 'Editar Usuario';
-  document.getElementById('usr-btn-txt').textContent    = 'Atualizar Usuario';
+  document.getElementById('usr-perfil').value  = perfil;
+  document.getElementById('usr-form-title').textContent = 'Editar Usuário';
+  document.getElementById('usr-btn-txt').textContent    = 'Atualizar Usuário';
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
@@ -1207,6 +1255,36 @@ async function salvarUsuario() {
     limparFormUsuario();
     await carregarUsuarios();
     toast(id ? 'Usuario atualizado com sucesso!' : 'Usuario cadastrado com sucesso!');
+
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}async function salvarUsuario() {
+  const nome   = document.getElementById('usr-nome').value.trim();
+  const email  = document.getElementById('usr-email').value.trim();
+  const senha  = document.getElementById('usr-senha').value;
+  const perfil = document.getElementById('usr-perfil').value;
+  const id     = document.getElementById('usr-edit-id').value;
+
+  if (!nome || !email) { toast('Nome e e-mail são obrigatórios.', 'error'); return; }
+  if (!id && !senha)   { toast('Informe uma senha para o novo usuário.', 'error'); return; }
+  if (senha && senha.length < 6) { toast('A senha deve ter no mínimo 6 caracteres.', 'error'); return; }
+
+  showLoading();
+  try {
+    const upd = { nome, email, perfil };
+    if (senha) upd.senha_hash = await sha256(senha);
+
+    let error;
+    if (id) { ({ error } = await db.from('tb_usuarios').update(upd).eq('id', id)); }
+    else    { ({ error } = await db.from('tb_usuarios').insert([{ ...upd, ativo:true }])); }
+
+    if (error) throw error;
+    limparFormUsuario();
+    await carregarUsuarios();
+    toast(id ? 'Usuário atualizado com sucesso!' : 'Usuário cadastrado com sucesso!');
 
   } catch(e) {
     toast('Erro: ' + e.message, 'error');
