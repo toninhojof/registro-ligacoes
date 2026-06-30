@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Registro de Ligações Telefônicas</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--blue-primary:#1a56db;--blue-dark:#1e429f;--blue-light:#e8f0fe;--sidebar-bg:#1a2c5b;--sidebar-hover:#243a75;--header-bg:#1a2c5b;--body-bg:#f0f4f8;--card-bg:#fff;--border-color:#e2e8f0;--text-primary:#1a202c;--text-secondary:#4a5568;--text-muted:#718096;--success:#0e9f6e;--danger:#e02424;--warning:#d97706;--radius:8px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--body-bg);color:var(--text-primary);font-size:14px;min-height:100vh;}
+/* LOGIN */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a2c5b,#1a56db);}
+.login-box{background:#fff;border-radius:16px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.login-logo{width:52px;height:52px;background:var(--blue-primary);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;margin:0 auto 16px;}
+.login-title{text-align:center;font-size:18px;font-weight:700;margin-bottom:4px;}
+.login-sub{text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:28px;}
+.login-label{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block;}
+.login-input{width:100%;padding:10px 12px;border:1px solid #cbd5e0;border-radius:8px;font-size:14px;margin-bottom:16px;}
+.login-input:focus{outline:none;border-color:var(--blue-primary);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
+.login-btn{width:100%;padding:11px;background:var(--blue-primary);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+.login-btn:hover{background:var(--blue-dark);}
+.login-error{background:#fff5f5;color:var(--danger);border:1px solid #fed7d7;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none;}
+/* APP */
+.app-screen{display:none;}
+.app-screen.visible{display:block;}
+/* HEADER */
+.app-header{background:var(--header-bg);height:56px;display:flex;align-items:center;padding:0 20px;position:fixed;top:0;left:0;right:0;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.3);gap:12px;}
+.logo-icon{width:34px;height:34px;background:var(--blue-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;}
+.logo-text{font-size:13px;font-weight:600;line-height:1.3;color:#fff;}
+.logo-text small{display:block;font-size:10px;opacity:.7;}
+.header-nav{display:flex;gap:4px;margin-left:24px;}
+.header-nav button{background:transparent;border:none;color:rgba(255,255,255,.7);padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.header-nav button:hover{background:rgba(255,255,255,.1);color:#fff;}
+.header-nav button.active{background:var(--blue-primary);color:#fff;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12px;color:rgba(255,255,255,.8);}
+.user-badge{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);padding:4px 10px;border-radius:20px;color:#fff;font-size:12px;}
+.logout-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;}
+.logout-btn:hover{background:rgba(255,255,255,.2);}
+/* SIDEBAR */
+.sidebar{width:200px;background:var(--sidebar-bg);position:fixed;top:56px;left:0;bottom:0;padding:12px 0;z-index:900;}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:10px 16px;color:rgba(255,255,255,.65);cursor:pointer;font-size:13px;font-weight:500;border-left:3px solid transparent;transition:all .15s;}
+.sidebar-item:hover{background:var(--sidebar-hover);color:rgba(255,255,255,.9);}
+.sidebar-item.active{background:var(--sidebar-hover);color:#fff;border-left-color:var(--blue-primary);}
+.sidebar-item i{font-size:18px;}
+/* MAIN */
+.main-content{margin-left:200px;margin-top:56px;padding:20px;}
+.screen{display:none;}
+.screen.active{display:block;}
+/* CARDS */
+.card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.card-header-custom{padding:16px 20px 12px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:8px;}
+.card-header-custom h5{font-size:13px;font-weight:700;letter-spacing:.05em;color:var(--blue-primary);text-transform:uppercase;margin:0;}
+.card-body-custom{padding:20px;}
+/* STAT CARDS */
+.stat-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;align-items:center;gap:14px;}
+.stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.stat-label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.stat-value{font-size:26px;font-weight:700;line-height:1.1;}
+.stat-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.stat-blue .stat-icon{background:var(--blue-light);color:var(--blue-primary);}
+.stat-green .stat-icon{background:#d1fae5;color:var(--success);}
+.stat-amber .stat-icon{background:#fef3c7;color:var(--warning);}
+.stat-purple .stat-icon{background:#ede9fe;color:#7c3aed;}
+/* FORM */
+.form-label{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;}
+.req{color:var(--danger);}
+.form-control,.form-select{background:#fff;border:1px solid #cbd5e0;border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text-primary);width:100%;}
+.form-control:focus,.form-select:focus{outline:none;border-color:var(--blue-primary);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
+.form-control::placeholder{color:#a0aec0;}
+textarea.form-control{resize:vertical;min-height:80px;}
+/* BUTTONS */
+.btn-primary-custom{background:var(--blue-primary);color:#fff;border:none;padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary-custom:hover{background:var(--blue-dark);}
+.btn-secondary-custom{background:transparent;color:var(--text-secondary);border:1px solid #cbd5e0;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.btn-secondary-custom:hover{background:#f7fafc;}
+.btn-success-custom{background:var(--success);color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.btn-danger-custom{background:var(--danger);color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.btn-icon{width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-color);background:transparent;cursor:pointer;font-size:15px;}
+.btn-icon-edit{color:var(--blue-primary);}
+.btn-icon-edit:hover{background:var(--blue-light);border-color:var(--blue-primary);}
+.btn-icon-del{color:var(--danger);}
+.btn-icon-del:hover{background:#fff5f5;border-color:var(--danger);}
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table thead th{background:#f7fafc;padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border-color);white-space:nowrap;cursor:pointer;user-select:none;}
+.data-table thead th:hover{color:var(--blue-primary);}
+.data-table thead th.sort-asc::after{content:' ▲';font-size:10px;}
+.data-table thead th.sort-desc::after{content:' ▼';font-size:10px;}
+.data-table tbody tr{border-bottom:1px solid var(--border-color);}
+.data-table tbody tr:hover{background:#ebf4ff;}
+.data-table tbody td{padding:10px 12px;vertical-align:middle;}
+.motivo-cell{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+.empty-state{text-align:center;padding:40px;color:var(--text-muted);}
+.empty-state i{font-size:40px;display:block;margin-bottom:8px;}
+/* BADGES */
+.setor-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.setor-Comercial{background:#dbeafe;color:#1e40af;}
+.setor-Financeiro{background:#d1fae5;color:#065f46;}
+.setor-Técnico{background:#ede9fe;color:#5b21b6;}
+.setor-RH{background:#fce7f3;color:#9d174d;}
+.setor-Jurídico{background:#fef3c7;color:#92400e;}
+.setor-TI{background:#e0f2fe;color:#075985;}
+.setor-Diretoria{background:#f0fdf4;color:#14532d;}
+.setor-Outros{background:#f1f5f9;color:#475569;}
+/* SEARCH */
+.search-wrap{position:relative;}
+.search-wrap .form-control{padding-left:36px;}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:16px;pointer-events:none;}
+/* PAGINATION */
+.pagination-custom{display:flex;align-items:center;gap:4px;}
+.page-info{font-size:12px;color:var(--text-muted);margin-right:auto;}
+.page-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--border-color);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-secondary);}
+.page-btn:hover{background:var(--blue-light);border-color:var(--blue-primary);color:var(--blue-primary);}
+.page-btn.active{background:var(--blue-primary);border-color:var(--blue-primary);color:#fff;}
+.page-btn:disabled{opacity:.4;cursor:not-allowed;}
+/* TOAST */
+.toast-container{position:fixed;top:70px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:12px 16px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.15);display:flex;align-items:center;gap:8px;animation:slideIn .2s ease;min-width:260px;}
+.toast-success{background:var(--success);color:#fff;}
+.toast-error{background:var(--danger);color:#fff;}
+.toast-info{background:var(--blue-primary);color:#fff;}
+@keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:none;opacity:1}}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:#fff;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-box h5{font-size:16px;font-weight:700;margin-bottom:10px;}
+.modal-box p{font-size:13px;color:var(--text-secondary);margin-bottom:20px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+/* LOADING */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.75);z-index:3000;align-items:center;justify-content:center;}
+.loading-overlay.show{display:flex;}
+.spinner{width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:var(--blue-primary);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* MISC */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
+.report-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;}
+.report-summary-card{background:#f7fafc;border:1px solid var(--border-color);border-radius:8px;padding:16px;text-align:center;}
+.rs-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;}
+.rs-value{font-size:28px;font-weight:700;color:var(--blue-primary);}
+.rs-breakdown{font-size:12px;color:var(--text-secondary);margin-top:4px;}
+.pie-legend{display:flex;flex-direction:column;gap:6px;min-width:140px;}
+.pie-legend-item{display:flex;align-items:center;gap:8px;font-size:12px;}
+.pie-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.report-pie-row{display:flex;align-items:flex-start;gap:20px;}
+.filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+.filter-group{display:flex;flex-direction:column;gap:4px;}
+.filter-group label{font-size:11px;font-weight:600;color:var(--text-muted);}
+.filter-row .form-control,.filter-row .form-select{min-width:130px;}
+.filter-actions{display:flex;gap:8px;margin-left:auto;align-items:flex-end;}
+.per-page-select{font-size:12px;padding:4px 8px;border:1px solid var(--border-color);border-radius:6px;background:#fff;}
+.section-page-title{font-size:20px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+@media print{.sidebar,.app-header,.no-print{display:none!important}.main-content{margin:0;padding:0}}
+@media(max-width:768px){.sidebar,.header-nav{display:none}.main-content{margin-left:0}}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <div class="login-logo"><i class="ti ti-phone"></i></div>
+    <div class="login-title">Sistema de Ligações</div>
+    <div class="login-sub">Faça login para continuar</div>
+    <div class="login-error" id="login-error"></div>
+    <label class="login-label">E-mail</label>
+    <input type="email" class="login-input" id="login-email" placeholder="seu@email.com">
+    <label class="login-label">Senha</label>
+    <input type="password" class="login-input" id="login-senha" placeholder="••••••••">
+    <button class="login-btn" onclick="fazerLogin()" id="login-btn"><i class="ti ti-login"></i> Entrar</button>
+    <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:20px">Sistema de Registro de Ligações Telefônicas</p>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="app-screen" class="app-screen">
+  <header class="app-header">
+    <div class="logo-icon"><i class="ti ti-phone"></i></div>
+    <div class="logo-text">Sistema de Registro <small>de Ligações Telefônicas</small></div>
+    <nav class="header-nav">
+      <button onclick="navigate('dashboard')" id="nav-dashboard" class="active"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+      <button onclick="navigate('cadastro')" id="nav-cadastro"><i class="ti ti-edit"></i> Cadastro</button>
+      <button onclick="navigate('consulta')" id="nav-consulta"><i class="ti ti-search"></i> Consulta</button>
+      <button onclick="navigate('relatorio')" id="nav-relatorio"><i class="ti ti-file-text"></i> Relatório</button>
+      <button onclick="navigate('graficos')" id="nav-graficos"><i class="ti ti-chart-bar"></i> Gráficos</button>
+    </nav>
+    <div class="header-right">
+      <span id="header-date"></span>&nbsp;<span id="header-time"></span>
+      <div class="user-badge"><i class="ti ti-user-circle" style="font-size:16px"></i> <span id="header-user">Usuário</span></div>
+      <button class="logout-btn" onclick="fazerLogout()"><i class="ti ti-logout"></i> Sair</button>
+    </div>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-item active" onclick="navigate('dashboard')" id="sb-dashboard"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+    <div class="sidebar-item" onclick="navigate('cadastro')" id="sb-cadastro"><i class="ti ti-edit"></i> Cadastro</div>
+    <div class="sidebar-item" onclick="navigate('consulta')" id="sb-consulta"><i class="ti ti-search"></i> Consulta</div>
+    <div class="sidebar-item" onclick="navigate('relatorio')" id="sb-relatorio"><i class="ti ti-file-text"></i> Relatório</div>
+    <div class="sidebar-item" onclick="navigate('graficos')" id="sb-graficos"><i class="ti ti-chart-bar"></i> Gráficos</div>
+    <div class="sidebar-item" onclick="navigate('usuarios')" id="sb-usuarios"><i class="ti ti-users"></i> Usuários</div>
+    <div class="sidebar-item" onclick="fazerLogout()"><i class="ti ti-logout"></i> Sair</div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- DASHBOARD -->
+    <section class="screen active" id="screen-dashboard">
+      <div class="section-page-title"><i class="ti ti-layout-dashboard" style="color:var(--blue-primary)"></i> Dashboard</div>
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3"><div class="stat-card stat-blue"><div class="stat-icon"><i class="ti ti-phone-incoming"></i></div><div><div class="stat-label">Hoje</div><div class="stat-value" id="stat-hoje">—</div><div class="stat-sub">ligações</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card stat-green"><div class="stat-icon"><i class="ti ti-calendar-week"></i></div><div><div class="stat-label">Esta semana</div><div class="stat-value" id="stat-semana">—</div><div class="stat-sub">ligações</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card stat-amber"><div class="stat-icon"><i class="ti ti-calendar-month"></i></div><div><div class="stat-label">Este mês</div><div class="stat-value" id="stat-mes">—</div><div class="stat-sub">ligações</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card stat-purple"><div class="stat-icon"><i class="ti ti-database"></i></div><div><div class="stat-label">Total geral</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub">registros</div></div></div></div>
+      </div>
+      <div class="charts-grid mb-4">
+        <div class="card"><div class="card-header-custom"><h5>Ligações por Setor</h5></div><div class="card-body-custom"><div style="position:relative;height:220px"><canvas id="chartSetor"></canvas></div></div></div>
+        <div class="card"><div class="card-header-custom"><h5>Evolução Diária (7 dias)</h5></div><div class="card-body-custom"><div style="position:relative;height:220px"><canvas id="chartDiario"></canvas></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header-custom"><h5>Últimas Ligações</h5></div>
+        <div class="card-body-custom" style="padding:0"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Data</th><th>Horário</th><th>Número</th><th>Nome</th><th>Empresa</th><th>Encaminhado para</th><th>Setor</th></tr></thead><tbody id="dash-table"><tr><td colspan="7"><div class="empty-state"><i class="ti ti-loader"></i>Carregando...</div></td></tr></tbody></table></div></div>
+      </div>
+    </section>
+
+    <!-- CADASTRO -->
+    <section class="screen" id="screen-cadastro">
+      <div class="section-page-title"><i class="ti ti-edit" style="color:var(--blue-primary)"></i> Cadastro de Ligação</div>
+      <div class="card mb-4">
+        <div class="card-header-custom"><h5>Cadastro de Contato</h5></div>
+        <div class="card-body-custom">
+          <input type="hidden" id="edit-id">
+          <div class="row g-3 mb-3">
+            <div class="col-md-3"><label class="form-label">Data <span class="req">*</span></label><input type="date" class="form-control" id="f-data"></div>
+            <div class="col-md-2"><label class="form-label">Horário <span class="req">*</span></label><input type="time" class="form-control" id="f-hora"></div>
+            <div class="col-md-3"><label class="form-label">Número <span class="req">*</span></label><input type="text" class="form-control" id="f-numero" placeholder="(11) 99999-9999" maxlength="15"></div>
+            <div class="col-md-4"><label class="form-label">Nome <span class="req">*</span></label><input type="text" class="form-control" id="f-nome" placeholder="Nome do contato"></div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4"><label class="form-label">Empresa <span class="req">*</span></label><input type="text" class="form-control" id="f-empresa" placeholder="Nome da empresa"></div>
+            <div class="col-md-4"><label class="form-label">Encaminhado para <span class="req">*</span></label><input type="text" class="form-control" id="f-encaminhado" placeholder="Nome do responsável"></div>
+            <div class="col-md-4"><label class="form-label">Setor <span class="req">*</span></label>
+              <select class="form-select" id="f-setor"><option value="">Selecione...</option><option>Comercial</option><option>Financeiro</option><option>Técnico</option><option>RH</option><option>Jurídico</option><option>TI</option><option>Diretoria</option><option>Outros</option></select>
+            </div>
+          </div>
+          <div class="row g-3 mb-4">
+            <div class="col-md-8"><label class="form-label">Motivo da Ligação <span class="req">*</span></label><textarea class="form-control" id="f-motivo" rows="3" placeholder="Descreva o motivo..."></textarea></div>
+            <div class="col-md-4"><label class="form-label">Observações</label><textarea class="form-control" id="f-obs" rows="3" placeholder="Observações..."></textarea></div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn-primary-custom" onclick="salvarRegistro()"><i class="ti ti-device-floppy"></i> <span id="btn-salvar-txt">Salvar</span></button>
+            <button class="btn-secondary-custom" onclick="limparFormulario()"><i class="ti ti-eraser"></i> Limpar</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header-custom" style="justify-content:space-between">
+          <h5>Registros Cadastrados</h5>
+          <div class="search-wrap" style="width:260px"><i class="ti ti-search search-icon"></i><input type="text" class="form-control" id="cad-search" placeholder="Buscar..." oninput="renderCadastroTable()"></div>
+        </div>
+        <div class="card-body-custom" style="padding:0">
+          <div style="overflow-x:auto"><table class="data-table"><thead><tr><th onclick="sortTable('cad','data')">Data</th><th onclick="sortTable('cad','hora')">Horário</th><th onclick="sortTable('cad','numero')">Número</th><th onclick="sortTable('cad','nome')">Nome</th><th onclick="sortTable('cad','empresa')">Empresa</th><th onclick="sortTable('cad','motivo')">Motivo</th><th onclick="sortTable('cad','encaminhado')">Encaminhado para</th><th onclick="sortTable('cad','setor')">Setor</th><th>Ações</th></tr></thead><tbody id="cad-table"></tbody></table></div>
+          <div style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;align-items:center;gap:12px">
+            <div class="page-info" id="cad-page-info"></div>
+            <div class="pagination-custom" id="cad-pagination"></div>
+            <select class="per-page-select" onchange="cadPerPage=+this.value;cadPage=1;renderCadastroTable()"><option value="10">10/pág</option><option value="25">25/pág</option><option value="50">50/pág</option></select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONSULTA -->
+    <section class="screen" id="screen-consulta">
+      <div class="section-page-title"><i class="ti ti-search" style="color:var(--blue-primary)"></i> Consulta de Ligações</div>
+      <div class="card mb-3">
+        <div class="card-body-custom">
+          <div class="search-wrap mb-3"><i class="ti ti-search search-icon"></i><input type="text" class="form-control" id="cons-search" placeholder="Pesquisar por nome, empresa, número, setor..." oninput="renderConsultaTable()"></div>
+          <div class="filter-row">
+            <div class="filter-group"><label>Data Inicial</label><input type="date" class="form-control" id="cons-di" oninput="renderConsultaTable()"></div>
+            <div class="filter-group"><label>Data Final</label><input type="date" class="form-control" id="cons-df" oninput="renderConsultaTable()"></div>
+            <div class="filter-group"><label>Setor</label><select class="form-select" id="cons-setor" onchange="renderConsultaTable()"><option value="">Todos</option><option>Comercial</option><option>Financeiro</option><option>Técnico</option><option>RH</option><option>Jurídico</option><option>TI</option><option>Diretoria</option><option>Outros</option></select></div>
+            <div class="filter-group"><label>Empresa</label><input type="text" class="form-control" id="cons-empresa" placeholder="Empresa..." oninput="renderConsultaTable()"></div>
+            <div class="filter-actions"><button class="btn-secondary-custom" onclick="limparFiltrosConsulta()"><i class="ti ti-x"></i> Limpar</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body-custom" style="padding:0">
+          <div style="overflow-x:auto"><table class="data-table"><thead><tr><th onclick="sortTable('cons','data')">Data</th><th onclick="sortTable('cons','hora')">Horário</th><th onclick="sortTable('cons','numero')">Número</th><th onclick="sortTable('cons','nome')">Nome</th><th onclick="sortTable('cons','empresa')">Empresa</th><th onclick="sortTable('cons','motivo')">Motivo</th><th onclick="sortTable('cons','encaminhado')">Encaminhado para</th><th onclick="sortTable('cons','setor')">Setor</th></tr></thead><tbody id="cons-table"></tbody></table></div>
+          <div style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;align-items:center;gap:12px">
+            <div class="page-info" id="cons-page-info"></div>
+            <div class="pagination-custom" id="cons-pagination"></div>
+            <select class="per-page-select" onchange="consPerPage=+this.value;consPage=1;renderConsultaTable()"><option value="10">10/pág</option><option value="25">25/pág</option><option value="50">50/pág</option></select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RELATÓRIO -->
+    <section class="screen" id="screen-relatorio">
+      <div class="section-page-title"><i class="ti ti-file-text" style="color:var(--blue-primary)"></i> Relatório de Ligações</div>
+      <div class="card mb-3 no-print">
+        <div class="card-body-custom">
+          <div class="filter-row">
+            <div class="filter-group"><label>Data Inicial</label><input type="date" class="form-control" id="rel-di"></div>
+            <div class="filter-group"><label>Data Final</label><input type="date" class="form-control" id="rel-df"></div>
+            <div class="filter-group"><label>Setor</label><select class="form-select" id="rel-setor"><option value="">Todos</option><option>Comercial</option><option>Financeiro</option><option>Técnico</option><option>RH</option><option>Jurídico</option><option>TI</option><option>Diretoria</option><option>Outros</option></select></div>
+            <div class="filter-group"><label>Empresa</label><input type="text" class="form-control" id="rel-empresa" placeholder="Todas"></div>
+            <div class="filter-actions"><button class="btn-primary-custom" onclick="gerarRelatorio()"><i class="ti ti-refresh"></i> Gerar Relatório</button></div>
+          </div>
+        </div>
+      </div>
+      <div id="relatorio-result" style="display:none">
+        <div class="report-summary mb-3">
+          <div class="report-summary-card"><div class="rs-title">Total de Ligações</div><div class="rs-value" id="rel-total">0</div></div>
+          <div class="report-summary-card"><div class="rs-title">Total por Setor</div><div class="rs-breakdown" id="rel-setores"></div></div>
+          <div class="report-summary-card"><div class="rs-title">Top Empresas</div><div class="rs-breakdown" id="rel-empresas"></div></div>
+        </div>
+        <div class="charts-grid mb-3">
+          <div class="card"><div class="card-header-custom"><h5>Por Setor</h5></div><div class="card-body-custom"><div class="report-pie-row"><div style="position:relative;width:160px;height:160px;flex-shrink:0"><canvas id="relPieSetor"></canvas></div><div class="pie-legend" id="rel-pie-setor-legend"></div></div></div></div>
+          <div class="card"><div class="card-header-custom"><h5>Por Empresa</h5></div><div class="card-body-custom"><div class="report-pie-row"><div style="position:relative;width:160px;height:160px;flex-shrink:0"><canvas id="relPieEmpresa"></canvas></div><div class="pie-legend" id="rel-pie-empresa-legend"></div></div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header-custom" style="justify-content:space-between">
+            <h5>Registros do Relatório</h5>
+            <div class="d-flex gap-2 no-print">
+              <button class="btn-primary-custom" onclick="window.print()"><i class="ti ti-printer"></i> Imprimir</button>
+              <button class="btn-danger-custom" onclick="window.print()"><i class="ti ti-file-type-pdf"></i> PDF</button>
+              <button class="btn-success-custom" onclick="exportarExcel()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+            </div>
+          </div>
+          <div class="card-body-custom" style="padding:0"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Data</th><th>Horário</th><th>Número</th><th>Nome</th><th>Empresa</th><th>Motivo</th><th>Encaminhado para</th><th>Setor</th></tr></thead><tbody id="rel-table"></tbody></table></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRÁFICOS -->
+    <section class="screen" id="screen-graficos">
+      <div class="section-page-title"><i class="ti ti-chart-bar" style="color:var(--blue-primary)"></i> Gráficos e Análises</div>
+      <div class="charts-grid mb-4">
+        <div class="card"><div class="card-header-custom"><h5>Ligações por Setor</h5></div><div class="card-body-custom"><div style="position:relative;height:260px"><canvas id="g-setor"></canvas></div></div></div>
+        <div class="card"><div class="card-header-custom"><h5>Evolução Diária (30 dias)</h5></div><div class="card-body-custom"><div style="position:relative;height:260px"><canvas id="g-diario"></canvas></div></div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="card"><div class="card-header-custom"><h5>Top 5 Empresas</h5></div><div class="card-body-custom"><div style="position:relative;height:240px"><canvas id="g-empresa"></canvas></div></div></div>
+        <div class="card"><div class="card-header-custom"><h5>Distribuição por Setor</h5></div><div class="card-body-custom"><div style="position:relative;height:240px"><canvas id="g-pizza"></canvas></div></div></div>
+      </div>
+    </section>
+
+    <!-- USUÁRIOS -->
+    <section class="screen" id="screen-usuarios">
+      <div class="section-page-title"><i class="ti ti-users" style="color:var(--blue-primary)"></i> Gerenciar Usuários</div>
+      <div class="card mb-4">
+        <div class="card-header-custom"><h5><span id="usr-form-title">Novo Usuário</span></h5></div>
+        <div class="card-body-custom">
+          <input type="hidden" id="usr-edit-id">
+          <div class="row g-3 mb-3">
+              <div class="col-md-3"><label class="form-label">Nome <span class="req">*</span></label><input type="text" class="form-control" id="usr-nome" placeholder="Nome completo"></div>
+              <div class="col-md-3"><label class="form-label">E-mail <span class="req">*</span></label><input type="email" class="form-control" id="usr-email" placeholder="email@empresa.com"></div>
+              <div class="col-md-3"><label class="form-label">Senha <span class="req">*</span></label><input type="password" class="form-control" id="usr-senha" placeholder="Mínimo 6 caracteres"></div>
+              <div class="col-md-3"><label class="form-label">Perfil <span class="req">*</span></label>
+                <select class="form-select" id="usr-perfil">
+                  <option value="recepcao">Recepção</option>
+                  <option value="gerente">Gerente</option>
+                  <option value="admin">Administrador</option>
+    </select>
+  </div>
+</div>
+          <div class="d-flex gap-2">
+            <button class="btn-primary-custom" onclick="salvarUsuario()"><i class="ti ti-device-floppy"></i> <span id="usr-btn-txt">Salvar Usuário</span></button>
+            <button class="btn-secondary-custom" onclick="limparFormUsuario()"><i class="ti ti-eraser"></i> Limpar</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header-custom"><h5>Usuários Cadastrados</h5></div>
+        <div class="card-body-custom" style="padding:0"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Cadastrado em</th><th>Ações</th></tr></thead><tbody id="usr-table"></tbody></table></div></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- TOAST / MODAL / LOADING -->
+<div class="toast-container" id="toastContainer"></div>
+<div class="modal-overlay" id="modal-confirm"><div class="modal-box"><h5 id="modal-title">Confirmar</h5><p id="modal-body">Tem certeza?</p><div class="modal-actions"><button class="btn-secondary-custom" onclick="closeModal()">Cancelar</button><button id="modal-confirm-btn" class="btn-danger-custom">Confirmar</button></div></div></div>
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+<!-- PARTE 2 e 3: cole os scripts abaixo desta linha -->
+<!-- PARTE 2 DE 3 — Cole este bloco ANTES de </body> no arquivo da Parte 1 -->
+<script>
+// ══════════════════════════════════════════
+//  CONFIGURAÇÃO SUPABASE
+// ══════════════════════════════════════════
+const SUPA_URL = 'https://hhzvmkdhcqdfapfphqrp.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZta2RoY3FkZmFwZnBocXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NzMyOTAsImV4cCI6MjA5ODA0OTI5MH0.-QLvbQgvLZNgT6tMaHdNpOK6w3mLKLze5u3xiga1UnE';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+// ══════════════════════════════════════════
+//  ESTADO GLOBAL
+// ══════════════════════════════════════════
+let currentUser  = null;
+let cachedData   = null;
+let cacheTime    = 0;
+let cadData      = [];
+let consData     = [];
+let relatorioData= [];
+let cadPage      = 1, cadPerPage  = 10;
+let consPage     = 1, consPerPage = 10;
+let cadSort      = { col:'data', dir:'desc' };
+let consSort     = { col:'data', dir:'desc' };
+
+// Chart instances
+let dashSetor=null, dashDiario=null;
+let relPie1=null,   relPie2=null;
+let gS=null, gD=null, gE=null, gP=null;
+
+const PIE_COLORS = ['#1a56db','#0e9f6e','#d97706','#7c3aed','#e02424','#0891b2','#65a30d','#9333ea'];
+
+// ══════════════════════════════════════════
+//  UTILITÁRIOS
+// ══════════════════════════════════════════
+function fmtDate(s) {
+  if (!s) return '';
+  const [y,m,d] = s.split('-');
+  return d ? `${d}/${m}/${y}` : s;
+}
+
+function today() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function nowTime() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function getWeekStart() {
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - d.getDay());
+  return d.toISOString().slice(0,10);
+}
+
+function getMonthStart() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+}
+
+function phoneMask(v) {
+  v = v.replace(/\D/g,'');
+  if (v.length <= 10) v = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+  else                v = v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+  return v.replace(/-$/,'');
+}
+
+async function sha256(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function setorBadge(s) {
+  return `<span class="setor-badge setor-${s}">${s}</span>`;
+}
+
+// ══════════════════════════════════════════
+//  RELÓGIO
+// ══════════════════════════════════════════
+function updateClock() {
+  const n = new Date();
+  const d = document.getElementById('header-date');
+  const t = document.getElementById('header-time');
+  if (d) d.textContent = n.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  if (t) t.textContent = n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+function toast(msg, type='success') {
+  const c  = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast-item toast-${type}`;
+  const ico = type==='success' ? 'ti-check' : type==='error' ? 'ti-x' : 'ti-info-circle';
+  el.innerHTML = `<i class="ti ${ico}"></i>${msg}`;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ══════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════
+function openModal(title, body, onConfirm, confirmTxt='Excluir', btnClass='btn-danger-custom') {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent  = body;
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.textContent = confirmTxt;
+  btn.className   = btnClass;
+  btn.onclick = () => { closeModal(); onConfirm(); };
+  document.getElementById('modal-confirm').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modal-confirm').classList.remove('show');
+}
+
+// ══════════════════════════════════════════
+//  LOADING
+// ══════════════════════════════════════════
+function showLoading() { document.getElementById('loading').classList.add('show'); }
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+
+// ══════════════════════════════════════════
+//  AUTENTICAÇÃO
+// ══════════════════════════════════════════
+document.getElementById('login-senha').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerLogin();
+});
+
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!email || !senha) {
+    errEl.textContent = 'Preencha e-mail e senha.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('login-btn');
+  btn.innerHTML = '<i class="ti ti-loader"></i> Entrando...';
+  btn.disabled  = true;
+
+  try {
+    const hash = await sha256(senha);
+    const { data, error } = await db
+      .from('tb_usuarios')
+      .select('*')
+      .eq('email', email)
+      .eq('senha_hash', hash)
+      .eq('ativo', true)
+      .single();
+
+    if (error || !data) throw new Error('E-mail ou senha incorretos.');
+
+    currentUser = data;
+    localStorage.setItem('srlt_user', JSON.stringify({ id:data.id, nome:data.nome, email:data.email }));
+    mostrarApp();
+
+  } catch(e) {
+    errEl.textContent   = e.message || 'Erro ao fazer login.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.innerHTML = '<i class="ti ti-login"></i> Entrar';
+    btn.disabled  = false;
+  }
+}
+
+function mostrarApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').classList.add('visible');
+  document.getElementById('header-user').textContent = currentUser.nome;
+  aplicarPermissoes();
+  navigate(currentUser.perfil === 'recepcao' ? 'cadastro' : 'dashboard');
+}
+
+function aplicarPermissoes() {
+  const perfil = currentUser.perfil || 'recepcao';
+
+  // Itens do menu lateral e topo
+  const itensRestritos = {
+    'dashboard':  ['gerente','admin'],
+    'consulta':   ['gerente','admin'],
+    'relatorio':  ['gerente','admin'],
+    'graficos':   ['gerente','admin'],
+    'usuarios':   ['admin']
+  };
+
+  Object.keys(itensRestritos).forEach(tela => {
+    const permitido = itensRestritos[tela].includes(perfil);
+    const sbItem  = document.getElementById('sb-'+tela);
+    const navItem = document.getElementById('nav-'+tela);
+    if (sbItem)  sbItem.style.display  = permitido ? 'flex' : 'none';
+    if (navItem) navItem.style.display = permitido ? 'flex' : 'none';
+  });
+}
+
+function fazerLogout() {
+  openModal('Sair do sistema','Deseja realmente sair?', () => {
+    currentUser = null;
+    localStorage.removeItem('srlt_user');
+    document.getElementById('app-screen').classList.remove('visible');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-senha').value = '';
+  }, 'Sair', 'btn-primary-custom');
+}
+
+// Verifica sessão salva ao carregar a página
+(function checkSession() {
+  const saved = localStorage.getItem('srlt_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      mostrarApp();
+    } catch(e) {
+      localStorage.removeItem('srlt_user');
+    }
+  }
+})();
+
+// ══════════════════════════════════════════
+//  NAVEGAÇÃO
+// ══════════════════════════════════════════
+function navigate(screen) {
+  const perfil = currentUser?.perfil || 'recepcao';
+  const permissoes = {
+    'dashboard':  ['gerente','admin'],
+    'cadastro':   ['recepcao','gerente','admin'],
+    'consulta':   ['gerente','admin'],
+    'relatorio':  ['gerente','admin'],
+    'graficos':   ['gerente','admin'],
+    'usuarios':   ['admin']
+  };
+
+  if (permissoes[screen] && !permissoes[screen].includes(perfil)) {
+    toast('Você não tem permissão para acessar esta área.', 'error');
+    screen = 'cadastro';
+  }
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.header-nav button').forEach(b => b.classList.remove('active'));
+
+  document.getElementById('screen-'+screen)?.classList.add('active');
+  document.getElementById('sb-'+screen)?.classList.add('active');
+  document.getElementById('nav-'+screen)?.classList.add('active');
+
+  if (screen === 'dashboard') renderDashboard();
+  if (screen === 'cadastro')  loadCadastroData();
+  if (screen === 'consulta')  loadConsultaData();
+  if (screen === 'graficos')  loadGraficosData();
+  if (screen === 'usuarios')  carregarUsuarios();
+}
+
+// ══════════════════════════════════════════
+//  CACHE / FETCH
+// ══════════════════════════════════════════
+async function fetchData(force=false) {
+  if (!force && cachedData && (Date.now() - cacheTime) < 30000) return cachedData;
+  const { data, error } = await db
+    .from('tb_ligacoes')
+    .select('*')
+    .order('data', { ascending:false })
+    .order('hora', { ascending:false });
+  if (error) throw error;
+  cachedData = data || [];
+  cacheTime  = Date.now();
+  return cachedData;
+}
+
+function invalidateCache() { cachedData = null; cacheTime = 0; }
+
+// ══════════════════════════════════════════
+//  ORDENAÇÃO
+// ══════════════════════════════════════════
+function sortTable(ctx, col) {
+  if (ctx === 'cad') {
+    cadSort.dir = (cadSort.col === col && cadSort.dir === 'asc') ? 'desc' : 'asc';
+    cadSort.col = col;
+    renderCadastroTable();
+  } else {
+    consSort.dir = (consSort.col === col && consSort.dir === 'asc') ? 'desc' : 'asc';
+    consSort.col = col;
+    renderConsultaTable();
+  }
+}
+
+function sortData(data, sort) {
+  return [...data].sort((a,b) => {
+    let av = a[sort.col] || '', bv = b[sort.col] || '';
+    if (sort.col === 'data') { av = av+'T'+(a.hora||'00:00'); bv = bv+'T'+(b.hora||'00:00'); }
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return sort.dir === 'asc' ? cmp : -cmp;
+  });
+}
+
+// ══════════════════════════════════════════
+//  PAGINAÇÃO
+// ══════════════════════════════════════════
+function renderPagination(cid, iid, page, perPage, total, fn) {
+  const tp   = Math.max(1, Math.ceil(total / perPage));
+  const from = total === 0 ? 0 : (page-1)*perPage+1;
+  const to   = Math.min(page*perPage, total);
+  document.getElementById(iid).textContent = `Mostrando ${from}–${to} de ${total} registros`;
+
+  let b = `<button class="page-btn" onclick="${fn}(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
+  let sp = Math.max(1, page-2), ep = Math.min(tp, page+2);
+  if (sp > 1) b += `<button class="page-btn" onclick="${fn}(1)">1</button>${sp>2?'<span style="padding:0 4px;color:var(--text-muted)">…</span>':''}`;
+  for (let p=sp; p<=ep; p++) b += `<button class="page-btn${p===page?' active':''}" onclick="${fn}(${p})">${p}</button>`;
+  if (ep < tp) b += `${ep<tp-1?'<span style="padding:0 4px;color:var(--text-muted)">…</span>':''}<button class="page-btn" onclick="${fn}(${tp})">${tp}</button>`;
+  b += `<button class="page-btn" onclick="${fn}(${page+1})" ${page>=tp?'disabled':''}>›</button>`;
+  document.getElementById(cid).innerHTML = b;
+}
+
+function goPageCad(p)  { cadPage  = p; renderCadastroTable(); }
+function goPageCons(p) { consPage = p; renderConsultaTable(); }
+
+// ══════════════════════════════════════════
+//  FORMULÁRIO DE CADASTRO
+// ══════════════════════════════════════════
+document.getElementById('f-numero').addEventListener('input', function() {
+  this.value = phoneMask(this.value);
+});
+
+function setFormDefaults() {
+  document.getElementById('f-data').value = today();
+  document.getElementById('f-hora').value = nowTime();
+}
+
+function limparFormulario() {
+  ['f-numero','f-nome','f-empresa','f-motivo','f-encaminhado','f-obs'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('f-setor').value  = '';
+  document.getElementById('edit-id').value  = '';
+  document.getElementById('btn-salvar-txt').textContent = 'Salvar';
+  setFormDefaults();
+}
+
+function validarForm() {
+  const req = ['f-data','f-hora','f-numero','f-nome','f-empresa','f-motivo','f-encaminhado','f-setor'];
+  for (const id of req) {
+    if (!document.getElementById(id).value.trim()) {
+      document.getElementById(id).focus();
+      toast('Preencha todos os campos obrigatórios.', 'error');
+      return false;
+    }
+  }
+  return true;
+}
+
+async function salvarRegistro() {
+  if (!validarForm()) return;
+  showLoading();
+  try {
+    const id  = document.getElementById('edit-id').value;
+    const reg = {
+      data:        document.getElementById('f-data').value,
+      hora:        document.getElementById('f-hora').value,
+      numero:      document.getElementById('f-numero').value.trim(),
+      nome:        document.getElementById('f-nome').value.trim(),
+      empresa:     document.getElementById('f-empresa').value.trim(),
+      motivo:      document.getElementById('f-motivo').value.trim(),
+      encaminhado: document.getElementById('f-encaminhado').value.trim(),
+      setor:       document.getElementById('f-setor').value,
+      obs:         document.getElementById('f-obs').value.trim(),
+      usuario:     currentUser?.nome || 'Recepção'
+    };
+
+    let error;
+    if (id) { ({ error } = await db.from('tb_ligacoes').update(reg).eq('id', id)); }
+    else    { ({ error } = await db.from('tb_ligacoes').insert([reg])); }
+
+    if (error) throw error;
+
+    invalidateCache();
+    limparFormulario();
+    await loadCadastroData();
+    toast(id ? 'Registro atualizado com sucesso!' : 'Ligação registrada com sucesso!');
+
+  } catch(e) {
+    toast('Erro ao salvar: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ══════════════════════════════════════════
+//  TABELA DE CADASTRO
+// ══════════════════════════════════════════
+async function loadCadastroData() {
+  try {
+    cadData = await fetchData();
+    renderCadastroTable();
+  } catch(e) {
+    toast('Erro ao carregar dados.', 'error');
+  }
+}
+
+function renderCadastroTable() {
+  const q = document.getElementById('cad-search').value.toLowerCase();
+  let baseData = cadData;
+
+  // Recepção só vê os próprios registros
+  if (currentUser?.perfil === 'recepcao') {
+    baseData = cadData.filter(r => r.usuario === currentUser.nome);
+  }
+
+  const filtered = sortData(
+    q ? baseData.filter(r => (r.nome+r.empresa+r.numero+r.setor+r.encaminhado+r.motivo).toLowerCase().includes(q)) : baseData,
+    cadSort
+  );
+  const total = filtered.length;
+  const page  = filtered.slice((cadPage-1)*cadPerPage, cadPage*cadPerPage);
+
+  document.getElementById('cad-table').innerHTML = page.length
+    ? page.map(r => `
+        <tr>
+          <td>${fmtDate(r.data)}</td>
+          <td>${r.hora?.slice(0,5)||''}</td>
+          <td>${r.numero}</td>
+          <td><strong>${r.nome}</strong></td>
+          <td>${r.empresa}</td>
+          <td><span class="motivo-cell" title="${r.motivo}">${r.motivo}</span></td>
+          <td>${r.encaminhado}</td>
+          <td>${setorBadge(r.setor)}</td>
+          <td style="white-space:nowrap">
+            <button class="btn-icon btn-icon-edit" onclick="editarRegistro('${r.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+            <button class="btn-icon btn-icon-del"  onclick="excluirRegistro('${r.id}')" title="Excluir"><i class="ti ti-trash"></i></button>
+          </td>
+        </tr>`).join('')
+    : `<tr><td colspan="9"><div class="empty-state"><i class="ti ti-inbox"></i>Nenhum registro encontrado</div></td></tr>`;
+
+  renderPagination('cad-pagination','cad-page-info', cadPage, cadPerPage, total, 'goPageCad');
+}
+
+function editarRegistro(id) {
+  const r = cadData.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('edit-id').value         = r.id;
+  document.getElementById('f-data').value          = r.data;
+  document.getElementById('f-hora').value          = r.hora?.slice(0,5) || '';
+  document.getElementById('f-numero').value        = r.numero;
+  document.getElementById('f-nome').value          = r.nome;
+  document.getElementById('f-empresa').value       = r.empresa;
+  document.getElementById('f-motivo').value        = r.motivo;
+  document.getElementById('f-encaminhado').value   = r.encaminhado;
+  document.getElementById('f-setor').value         = r.setor;
+  document.getElementById('f-obs').value           = r.obs || '';
+  document.getElementById('btn-salvar-txt').textContent = 'Atualizar';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+async function excluirRegistro(id) {
+  openModal(
+    'Confirmar exclusão',
+    'Deseja excluir este registro? Esta ação não pode ser desfeita.',
+    async () => {
+      showLoading();
+      try {
+        const { error } = await db.from('tb_ligacoes').delete().eq('id', id);
+        if (error) throw error;
+        invalidateCache();
+        await loadCadastroData();
+        toast('Registro excluído.', 'info');
+      } catch(e) {
+        toast('Erro ao excluir: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+  );
+}
+
+// ══════════════════════════════════════════
+//  CONSULTA
+// ══════════════════════════════════════════
+async function loadConsultaData() {
+  try {
+    consData = await fetchData();
+    renderConsultaTable();
+  } catch(e) {
+    toast('Erro ao carregar dados.', 'error');
+  }
+}
+
+function limparFiltrosConsulta() {
+  ['cons-search','cons-di','cons-df','cons-empresa'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cons-setor').value = '';
+  consPage = 1;
+  renderConsultaTable();
+}
+
+function renderConsultaTable() {
+  const q     = document.getElementById('cons-search').value.toLowerCase();
+  const di    = document.getElementById('cons-di').value;
+  const df    = document.getElementById('cons-df').value;
+  const setor = document.getElementById('cons-setor').value;
+  const emp   = document.getElementById('cons-empresa').value.toLowerCase();
+
+  let d = consData;
+  if (q)     d = d.filter(r => (r.nome+r.empresa+r.numero+r.setor+r.encaminhado+r.motivo).toLowerCase().includes(q));
+  if (di)    d = d.filter(r => r.data >= di);
+  if (df)    d = d.filter(r => r.data <= df);
+  if (setor) d = d.filter(r => r.setor === setor);
+  if (emp)   d = d.filter(r => r.empresa.toLowerCase().includes(emp));
+
+  const filtered = sortData(d, consSort);
+  const total    = filtered.length;
+  const page     = filtered.slice((consPage-1)*consPerPage, consPage*consPerPage);
+
+  document.getElementById('cons-table').innerHTML = page.length
+    ? page.map(r => `
+        <tr>
+          <td>${fmtDate(r.data)}</td>
+          <td>${r.hora?.slice(0,5)||''}</td>
+          <td>${r.numero}</td>
+          <td><strong>${r.nome}</strong></td>
+          <td>${r.empresa}</td>
+          <td><span class="motivo-cell" title="${r.motivo}">${r.motivo}</span></td>
+          <td>${r.encaminhado}</td>
+          <td>${setorBadge(r.setor)}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="8"><div class="empty-state"><i class="ti ti-search"></i>Nenhum resultado encontrado</div></td></tr>`;
+
+  renderPagination('cons-pagination','cons-page-info', consPage, consPerPage, total, 'goPageCons');
+}
+
+// ══════════════════════════════════════════
+//  INICIALIZAÇÃO
+// ══════════════════════════════════════════
+setFormDefaults();
+</script>
+<!-- FIM DA PARTE 2 — aguarde a Parte 3 para relatório, gráficos e usuários -->
+<!-- PARTE 3 DE 3 — Cole este bloco APÓS a Parte 2, ainda antes de </body> -->
+<script>
+
+// ══════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════
+async function renderDashboard() {
+  try {
+    const data = await fetchData();
+    const t  = today();
+    const ws = getWeekStart();
+    const ms = getMonthStart();
+
+    document.getElementById('stat-hoje').textContent   = data.filter(r => r.data === t).length;
+    document.getElementById('stat-semana').textContent = data.filter(r => r.data >= ws).length;
+    document.getElementById('stat-mes').textContent    = data.filter(r => r.data >= ms).length;
+    document.getElementById('stat-total').textContent  = data.length;
+
+    const recent = data.slice(0, 8);
+    document.getElementById('dash-table').innerHTML = recent.length
+      ? recent.map(r => `
+          <tr>
+            <td>${fmtDate(r.data)}</td>
+            <td>${r.hora?.slice(0,5)||''}</td>
+            <td>${r.numero}</td>
+            <td><strong>${r.nome}</strong></td>
+            <td>${r.empresa}</td>
+            <td>${r.encaminhado}</td>
+            <td>${setorBadge(r.setor)}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="7"><div class="empty-state"><i class="ti ti-inbox"></i>Nenhum registro ainda</div></td></tr>`;
+
+    const sm = {};
+    data.forEach(r => { sm[r.setor] = (sm[r.setor]||0) + 1; });
+    const sL = Object.keys(sm), sV = sL.map(s => sm[s]);
+
+    if (dashSetor) dashSetor.destroy();
+    dashSetor = new Chart(document.getElementById('chartSetor'), {
+      type: 'bar',
+      data: { labels: sL, datasets: [{ label:'Ligações', data: sV, backgroundColor:'#3b82f6', borderRadius:4 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    });
+
+    const days = [], cnts = [];
+    for (let i = 6; i >= 0; i--) {
+      const d  = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0,10);
+      days.push(fmtDate(ds).slice(0,5));
+      cnts.push(data.filter(r => r.data === ds).length);
+    }
+
+    if (dashDiario) dashDiario.destroy();
+    dashDiario = new Chart(document.getElementById('chartDiario'), {
+      type: 'line',
+      data: { labels: days, datasets: [{ label:'Ligações', data: cnts, borderColor:'#0e9f6e', backgroundColor:'rgba(14,159,110,0.08)', borderWidth:2, fill:true, tension:0.3, pointRadius:4 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    });
+
+  } catch(e) {
+    toast('Erro ao carregar dashboard.', 'error');
+  }
+}
+
+// ══════════════════════════════════════════
+//  RELATÓRIO
+// ══════════════════════════════════════════
+async function gerarRelatorio() {
+  showLoading();
+  try {
+    const di    = document.getElementById('rel-di').value;
+    const df    = document.getElementById('rel-df').value;
+    const setor = document.getElementById('rel-setor').value;
+    const emp   = document.getElementById('rel-empresa').value.toLowerCase();
+
+    let data = await fetchData(true);
+    if (di)    data = data.filter(r => r.data >= di);
+    if (df)    data = data.filter(r => r.data <= df);
+    if (setor) data = data.filter(r => r.setor === setor);
+    if (emp)   data = data.filter(r => r.empresa.toLowerCase().includes(emp));
+
+    data = sortData(data, { col:'data', dir:'desc' });
+    relatorioData = data;
+
+    document.getElementById('rel-total').textContent = data.length;
+
+    const sm = {}, em = {};
+    data.forEach(r => {
+      sm[r.setor]   = (sm[r.setor]  ||0) + 1;
+      em[r.empresa] = (em[r.empresa]||0) + 1;
+    });
+
+    document.getElementById('rel-setores').innerHTML = Object.entries(sm)
+      .sort((a,b) => b[1]-a[1])
+      .map(([s,n]) => `<div>${s}: <strong>${n}</strong></div>`).join('');
+
+    const topEmps = Object.entries(em).sort((a,b) => b[1]-a[1]).slice(0,5);
+    document.getElementById('rel-empresas').innerHTML = topEmps
+      .map(([e,n]) => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px" title="${e}">${e}: <strong>${n}</strong></div>`).join('');
+
+    document.getElementById('rel-table').innerHTML = data.length
+      ? data.map(r => `
+          <tr>
+            <td>${fmtDate(r.data)}</td>
+            <td>${r.hora?.slice(0,5)||''}</td>
+            <td>${r.numero}</td>
+            <td>${r.nome}</td>
+            <td>${r.empresa}</td>
+            <td><span class="motivo-cell" style="max-width:180px" title="${r.motivo}">${r.motivo}</span></td>
+            <td>${r.encaminhado}</td>
+            <td>${r.setor}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="8"><div class="empty-state"><i class="ti ti-inbox"></i>Nenhum dado encontrado</div></td></tr>`;
+
+    const sL = Object.keys(sm), sV = sL.map(s => sm[s]);
+    if (relPie1) relPie1.destroy();
+    relPie1 = new Chart(document.getElementById('relPieSetor'), {
+      type: 'doughnut',
+      data: { labels: sL, datasets: [{ data: sV, backgroundColor: PIE_COLORS, borderWidth:0 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+    });
+    document.getElementById('rel-pie-setor-legend').innerHTML = sL.map((s,i) =>
+      `<div class="pie-legend-item"><div class="pie-legend-dot" style="background:${PIE_COLORS[i%8]}"></div><span>${s}: <strong>${sV[i]}</strong></span></div>`
+    ).join('');
+
+    const eL = topEmps.map(([e]) => e.length > 18 ? e.slice(0,18)+'...' : e);
+    const eV = topEmps.map(([,n]) => n);
+    if (relPie2) relPie2.destroy();
+    relPie2 = new Chart(document.getElementById('relPieEmpresa'), {
+      type: 'doughnut',
+      data: { labels: eL, datasets: [{ data: eV, backgroundColor: PIE_COLORS, borderWidth:0 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+    });
+    document.getElementById('rel-pie-empresa-legend').innerHTML = eL.map((e,i) =>
+      `<div class="pie-legend-item"><div class="pie-legend-dot" style="background:${PIE_COLORS[i%8]}"></div><span>${e}: <strong>${eV[i]}</strong></span></div>`
+    ).join('');
+
+    document.getElementById('relatorio-result').style.display = 'block';
+    document.getElementById('relatorio-result').scrollIntoView({ behavior:'smooth' });
+
+  } catch(e) {
+    toast('Erro ao gerar relatório: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ══════════════════════════════════════════
+//  EXPORTAR EXCEL
+// ══════════════════════════════════════════
+function exportarExcel() {
+  if (!relatorioData.length) {
+    toast('Gere o relatório primeiro.', 'error');
+    return;
+  }
+  const rows = relatorioData.map(r => ({
+    'Data':             fmtDate(r.data),
+    'Horario':          r.hora?.slice(0,5) || '',
+    'Numero':           r.numero,
+    'Nome':             r.nome,
+    'Empresa':          r.empresa,
+    'Motivo':           r.motivo,
+    'Encaminhado para': r.encaminhado,
+    'Setor':            r.setor,
+    'Observacoes':      r.obs || ''
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Ligacoes');
+  XLSX.writeFile(wb, `relatorio-ligacoes-${today()}.xlsx`);
+  toast('Arquivo Excel exportado com sucesso!');
+}
+
+// ══════════════════════════════════════════
+//  GRAFICOS
+// ══════════════════════════════════════════
+async function loadGraficosData() {
+  try {
+    const data = await fetchData();
+    const sm = {}, em = {};
+    data.forEach(r => {
+      sm[r.setor]   = (sm[r.setor]  ||0) + 1;
+      em[r.empresa] = (em[r.empresa]||0) + 1;
+    });
+
+    const sL = Object.keys(sm), sV = sL.map(s => sm[s]);
+
+    if (gS) gS.destroy();
+    gS = new Chart(document.getElementById('g-setor'), {
+      type: 'bar',
+      data: { labels: sL, datasets: [{ label:'Ligacoes', data: sV, backgroundColor: PIE_COLORS, borderRadius:4 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    });
+
+    const d30 = [], c30 = [];
+    for (let i = 29; i >= 0; i--) {
+      const d  = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0,10);
+      d30.push(i === 0 ? 'Hoje' : fmtDate(ds).slice(0,5));
+      c30.push(data.filter(r => r.data === ds).length);
+    }
+
+    if (gD) gD.destroy();
+    gD = new Chart(document.getElementById('g-diario'), {
+      type: 'line',
+      data: { labels: d30, datasets: [{ label:'Ligacoes', data: c30, borderColor:'#1a56db', backgroundColor:'rgba(26,86,219,0.07)', borderWidth:2, fill:true, tension:0.3, pointRadius:2 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ maxTicksLimit:10 } }, y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    });
+
+    const top5 = Object.entries(em).sort((a,b) => b[1]-a[1]).slice(0,5);
+    const eL   = top5.map(([e]) => e.length > 18 ? e.slice(0,18)+'...' : e);
+    const eV   = top5.map(([,n]) => n);
+
+    if (gE) gE.destroy();
+    gE = new Chart(document.getElementById('g-empresa'), {
+      type: 'bar',
+      data: { labels: eL, datasets: [{ label:'Ligacoes', data: eV, backgroundColor:'#7c3aed', borderRadius:4 }] },
+      options: { responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    });
+
+    if (gP) gP.destroy();
+    gP = new Chart(document.getElementById('g-pizza'), {
+      type: 'doughnut',
+      data: { labels: sL, datasets: [{ data: sV, backgroundColor: PIE_COLORS, borderWidth:0 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ boxWidth:12, font:{ size:12 } } } } }
+    });
+
+  } catch(e) {
+    toast('Erro ao carregar graficos.', 'error');
+  }
+}
+
+// ══════════════════════════════════════════
+//  USUARIOS
+// ══════════════════════════════════════════
+async function carregarUsuarios() {
+  try {
+    const { data, error } = await db
+      .from('tb_usuarios')
+      .select('*')
+      .order('data_cadastro', { ascending:false });
+    if (error) throw error;
+
+    const nomePerfil = { recepcao:'Recepção', gerente:'Gerente', admin:'Administrador' };
+
+    document.getElementById('usr-table').innerHTML = data.length
+      ? data.map(u => `
+          <tr>
+            <td><strong>${u.nome}</strong></td>
+            <td>${u.email}</td>
+            <td><span class="setor-badge setor-Comercial">${nomePerfil[u.perfil] || u.perfil}</span></td>
+            <td><span class="setor-badge ${u.ativo ? 'setor-Comercial' : 'setor-Outros'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+            <td>${new Date(u.data_cadastro).toLocaleDateString('pt-BR')}</td>
+            <td style="white-space:nowrap">
+              <button class="btn-icon btn-icon-edit" onclick="editarUsuario('${u.id}','${u.nome}','${u.email}','${u.perfil}')" title="Editar">
+                <i class="ti ti-edit"></i>
+              </button>
+              ${u.id !== currentUser?.id ? `
+              <button class="btn-icon btn-icon-del" onclick="toggleUsuario('${u.id}',${u.ativo})" title="${u.ativo ? 'Desativar' : 'Ativar'}">
+                <i class="ti ti-${u.ativo ? 'user-off' : 'user-check'}"></i>
+              </button>` : ''}
+            </td>
+          </tr>`).join('')
+      : `<tr><td colspan="6"><div class="empty-state"><i class="ti ti-users"></i>Nenhum usuário cadastrado</div></td></tr>`;
+
+  } catch(e) {
+    toast('Erro ao carregar usuários: ' + e.message, 'error');
+  }
+}
+
+function editarUsuario(id, nome, email, perfil) {
+  document.getElementById('usr-edit-id').value = id;
+  document.getElementById('usr-nome').value    = nome;
+  document.getElementById('usr-email').value   = email;
+  document.getElementById('usr-senha').value   = '';
+  document.getElementById('usr-perfil').value  = perfil;
+  document.getElementById('usr-form-title').textContent = 'Editar Usuário';
+  document.getElementById('usr-btn-txt').textContent    = 'Atualizar Usuário';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function limparFormUsuario() {
+  ['usr-nome','usr-email','usr-senha'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('usr-edit-id').value = '';
+  document.getElementById('usr-form-title').textContent = 'Novo Usuario';
+  document.getElementById('usr-btn-txt').textContent    = 'Salvar Usuario';
+}
+
+async function salvarUsuario() {
+  const nome   = document.getElementById('usr-nome').value.trim();
+  const email  = document.getElementById('usr-email').value.trim();
+  const senha  = document.getElementById('usr-senha').value;
+  const perfil = document.getElementById('usr-perfil').value;
+  const id     = document.getElementById('usr-edit-id').value;
+
+  if (!nome || !email) { toast('Nome e e-mail são obrigatórios.', 'error'); return; }
+  if (!id && !senha)   { toast('Informe uma senha para o novo usuário.', 'error'); return; }
+  if (senha && senha.length < 6) { toast('A senha deve ter no mínimo 6 caracteres.', 'error'); return; }
+
+  showLoading();
+  try {
+    const upd = { nome, email, perfil };
+    if (senha) upd.senha_hash = await sha256(senha);
+
+    let error;
+    if (id) { ({ error } = await db.from('tb_usuarios').update(upd).eq('id', id)); }
+    else    { ({ error } = await db.from('tb_usuarios').insert([{ ...upd, ativo:true }])); }
+
+    if (error) throw error;
+    limparFormUsuario();
+    await carregarUsuarios();
+    toast(id ? 'Usuário atualizado com sucesso!' : 'Usuário cadastrado com sucesso!');
+
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function toggleUsuario(id, ativo) {
+  const acao = ativo ? 'desativar' : 'ativar';
+  openModal(
+    'Confirmar',
+    `Deseja ${acao} este usuario?`,
+    async () => {
+      showLoading();
+      try {
+        const { error } = await db.from('tb_usuarios').update({ ativo: !ativo }).eq('id', id);
+        if (error) throw error;
+        await carregarUsuarios();
+        toast(`Usuario ${ativo ? 'desativado' : 'ativado'} com sucesso.`, 'info');
+      } catch(e) {
+        toast('Erro: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    },
+    ativo ? 'Desativar' : 'Ativar',
+    'btn-primary-custom'
+  );
+}
+
+</script>
+<!-- FIM DA PARTE 3 — sistema completo -->
+
+
+</body>
+</html>
